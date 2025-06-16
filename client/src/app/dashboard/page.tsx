@@ -5,6 +5,13 @@ import { Clock, Trophy, Star, Book, ChevronRight, X, CheckCircle, Settings } fro
 import { ethers, BrowserProvider } from "ethers"
 import Link from "next/link"
 import lingPro from "../contractInfo/lingPro.json"
+import { WalletSelector } from "../components/WalletSelector"
+import { useQueryClient } from "@tanstack/react-query"
+import { aptosClient } from "@/utils/aptosClient"
+import { LANGO_ABI } from "@/utils/lango"
+import { toast } from "../components/ui/use-toast"
+import { useWalletClient } from "@thalalabs/surf/hooks";
+import { useWallet } from "@aptos-labs/wallet-adapter-react"
 
 interface Lesson {
   title: string
@@ -60,6 +67,32 @@ declare global {
 }
 
 const DashboardPage = () => {
+
+  const { account, connected, disconnect, wallet } = useWallet();
+
+
+  // Uncomment and use the wallet client hook to get the client instance
+  const { client } = useWalletClient();
+
+  // const queryClient = useQueryClient();
+
+  const [messageContent, setMessageContent] = useState<string>();
+  const [newMessageContent, setNewMessageContent] = useState<string>();
+
+
+  const address = "0x5a5d125b5d1c3b57cc8b0901196139bff53c53d7d27dc8c27edea4190fa7f381";
+
+
+
+
+ 
+
+
+
+
+
+
+
   const [walletConnected, setWalletConnected] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [walletAddress, setWalletAddress] = useState("")
@@ -106,19 +139,19 @@ const DashboardPage = () => {
     }
   }, [examState.timeRemaining, examState.examInProgress])
 
-  const connectWallet = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
-        setWalletAddress(accounts[0])
-        setWalletConnected(true)
-      } catch (error) {
-        console.error("Error connecting to wallet:", error)
-      }
-    } else {
-      alert("MetaMask is not installed. Please install it to use this feature.")
-    }
-  }
+  // const connectWallet = async () => {
+  //   if (typeof window.ethereum !== "undefined") {
+  //     try {
+  //       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
+  //       setWalletAddress(accounts[0])
+  //       setWalletConnected(true)
+  //     } catch (error) {
+  //       console.error("Error connecting to wallet:", error)
+  //     }
+  //   } else {
+  //     alert("MetaMask is not installed. Please install it to use this feature.")
+  //   }
+  // }
 
   const handleToggleDropdown = () => {
     setShowDropdown(!showDropdown)
@@ -129,56 +162,124 @@ const DashboardPage = () => {
     setShowConfirmation(true)
   }
 
-  const handleConfirm = () => {
-    setShowConfirmation(false)
-    donateInititate()
-    // Additional logic for starting the lesson
-  }
+  // const handleConfirm = () => {
+  //   setShowConfirmation(false)
+  //   donateInititate()
+  //   // Additional logic for starting the lesson
+  // }
+const handleConfirm = async () => {
+  setShowConfirmation(false);
+  await donateInititate(); // Wait for this to finish
+  setShowAIExamModal(true); // Now show the AI modal
+};
 
-  const donateInititate = async () => {
-    const claimAmt = 10
-    const contractAddress = "0xF63cFCE89397a98a53FC0eb347eFb1E2DA87346D"
-    if (typeof window.ethereum === "undefined") {
-      console.log("Ethereum provider is not available.")
-      return
+
+
+// ethereum func
+
+  // const donateInititate = async () => {
+  //   const claimAmt = 10
+  //   const contractAddress = "0xF63cFCE89397a98a53FC0eb347eFb1E2DA87346D"
+  //   if (typeof window.ethereum === "undefined") {
+  //     console.log("Ethereum provider is not available.")
+  //     return
+  //   }
+
+  //   const provider = new BrowserProvider(window.ethereum)
+
+  //   const signer = await provider.getSigner()
+  //   const address = await signer.getAddress()
+  //   console.log("Wallet Address:", address)
+  //   const humorTokenContract = new ethers.Contract(contractAddress, lingPro.abi, signer)
+  //   console.log(claimAmt, "========inside withdraw===")
+
+  //   await (
+  //     await humorTokenContract.donate(
+  //       address,
+  //       "0x94A7Af5edB47c3B91d1B4Ffc2CA535d7aDA8CEDe",
+  //       ethers.parseUnits(claimAmt.toString(), 18),
+  //     )
+  //   ).wait()
+  // }
+
+
+   const donateInititate = async () => {
+    if (!client) {
+      return;
     }
 
-    const provider = new BrowserProvider(window.ethereum)
+    try {
+      const committedTransaction = await client.useABI(LANGO_ABI).transfer({
+        type_arguments: [],
+        arguments: [address,5000000000],
+      });
+      const executedTransaction = await aptosClient().waitForTransaction({
+        transactionHash: committedTransaction.hash,
+      });
+      // queryClient.invalidateQueries({
+      //   queryKey: ["message-content"],
+      // });
+      toast({
+        title: "Success",
+        description: `Transaction succeeded, hash: ${executedTransaction.hash}`,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-    const signer = await provider.getSigner()
-    const address = await signer.getAddress()
-    console.log("Wallet Address:", address)
-    const humorTokenContract = new ethers.Contract(contractAddress, lingPro.abi, signer)
-    console.log(claimAmt, "========inside withdraw===")
 
-    await (
-      await humorTokenContract.donate(
-        address,
-        "0x94A7Af5edB47c3B91d1B4Ffc2CA535d7aDA8CEDe",
-        ethers.parseUnits(claimAmt.toString(), 18),
-      )
-    ).wait()
-  }
 
-  const withdrawInititate = async () => {
-    setShowDropdown(!showDropdown)
-    const claimAmt = 25
-    const contractAddress = "0xF63cFCE89397a98a53FC0eb347eFb1E2DA87346D"
-    if (typeof window.ethereum === "undefined") {
-      console.log("Ethereum provider is not available.")
-      return
+  // const withdrawInititate = async () => {
+  //   setShowDropdown(!showDropdown)
+  //   const claimAmt = 25
+  //   const contractAddress = "0xF63cFCE89397a98a53FC0eb347eFb1E2DA87346D"
+  //   if (typeof window.ethereum === "undefined") {
+  //     console.log("Ethereum provider is not available.")
+  //     return
+  //   }
+
+  //   const provider = new BrowserProvider(window.ethereum)
+
+  //   const signer = await provider.getSigner()
+  //   const address = await signer.getAddress()
+  //   console.log("Wallet Address:", address)
+  //   const humorTokenContract = new ethers.Contract(contractAddress, lingPro.abi, signer)
+  //   console.log(claimAmt, "========inside withdraw===")
+
+  //   await (await humorTokenContract.mint(address, ethers.parseUnits(claimAmt.toString(), 18))).wait()
+  // }
+
+   const withdrawInititate = async () => {
+    if (!account || !client) {
+      return;
     }
 
-    const provider = new BrowserProvider(window.ethereum)
-
-    const signer = await provider.getSigner()
-    const address = await signer.getAddress()
-    console.log("Wallet Address:", address)
-    const humorTokenContract = new ethers.Contract(contractAddress, lingPro.abi, signer)
-    console.log(claimAmt, "========inside withdraw===")
-
-    await (await humorTokenContract.mint(address, ethers.parseUnits(claimAmt.toString(), 18))).wait()
+    try {
+      const committedTransaction = await client.useABI(LANGO_ABI).mint({
+        type_arguments: [],
+        arguments: [account.address.toString(),10000000000],
+      });
+      const executedTransaction = await aptosClient().waitForTransaction({
+        transactionHash: committedTransaction.hash,
+      });
+      // queryClient.invalidateQueries({
+      //   queryKey: ["message-content"],
+      // });
+      toast({
+        title: "Success",
+        description: `Transaction succeeded, hash: ${executedTransaction.hash}`,
+      });
+    } catch (error) {
+      console.error(error);
+    }
   }
+
+
+
+
+
+
 
   const handleExamGeneration = async () => {
     setIsGeneratingExam(true)
@@ -439,7 +540,7 @@ const DashboardPage = () => {
 
   const lessons: Lesson[] = [
     {
-      title: "Mastering Past Tense",
+      title: "Mastering Spanish ",
       level: "Intermediate",
       duration: "20 min",
       tokens: 50,
@@ -793,7 +894,7 @@ const DashboardPage = () => {
                   className="flex items-center space-x-2 bg-white/50 rounded-full px-4 py-1 cursor-pointer"
                 >
                   <Trophy size={16} className="text-yellow-600" />
-                  <span className="text-sm font-medium text-gray-700">25</span>
+                  <span className="text-sm font-medium text-gray-700">100 LG</span>
                 </div>
                 {showDropdown && (
                   <div className="absolute right-0 mt-2 w-40 bg-white/90 backdrop-blur-sm shadow-md rounded-lg p-4">
@@ -806,20 +907,7 @@ const DashboardPage = () => {
                   </div>
                 )}
               </div>
-              {!walletConnected ? (
-                <button
-                  onClick={connectWallet}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full text-sm font-medium hover:shadow-lg transition-shadow duration-300"
-                >
-                  Connect Wallet
-                </button>
-              ) : (
-                <div className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full text-sm font-medium hover:shadow-lg transition-shadow duration-300">
-                  <span className="text-white text-xs">
-                    {walletAddress.slice(0, 5) + "..." + walletAddress.slice(-4)}
-                  </span>
-                </div>
-              )}
+             <WalletSelector/>
             </div>
           </div>
         </div>
@@ -850,8 +938,8 @@ const DashboardPage = () => {
 
         {/* AI Exam Generator Button */}
         <div className="mb-12">
-          <button
-            onClick={() => setShowAIExamModal(true)}
+          <div
+            // onClick={() => setShowAIExamModal(true)}
             className="w-full bg-white/40 backdrop-blur-sm rounded-2xl p-6 shadow-sm hover:bg-white/50 transition-all duration-300 flex items-center justify-between"
           >
             <div className="flex items-center space-x-4">
@@ -863,8 +951,20 @@ const DashboardPage = () => {
                 <p className="text-sm text-gray-600">Generate custom language exams with AI</p>
               </div>
             </div>
+            <button
+                      onClick={() =>{
+                        handleStartLesson(lessons[0])
+                        // setShowAIExamModal(true)
+                      }
+                      } 
+                      
+                      className="px-4 py-2 ml-[500px] bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full text-sm font-medium hover:shadow-lg transition-shadow duration-300"
+                      
+                    >
+                     Start Assesment
+                    </button>
             <ChevronRight size={20} className="text-gray-500" />
-          </button>
+          </div>
         </div>
 
         {/* Main Sections Grid */}
@@ -1233,4 +1333,6 @@ const DashboardPage = () => {
 }
 
 export default DashboardPage
+
+
 
